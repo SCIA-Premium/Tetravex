@@ -21,6 +21,7 @@ class Tetravex
 {
 public:
     Tetravex() = default;
+    Tetravex(std::string filename);
     ~Tetravex() = default;
 
     void readFromFile(std::string filename);

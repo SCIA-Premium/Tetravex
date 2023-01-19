@@ -1,5 +1,10 @@
 #include "tetravex.hh"
 
+Tetravex::Tetravex(std::string filename)
+{
+    this->readFromFile(filename);
+}
+
 void Tetravex::readFromFile(std::string filename)
 {
     std::ifstream inputFile(filename);
@@ -9,17 +14,16 @@ void Tetravex::readFromFile(std::string filename)
         exit(1);
     }
     
-    std::string line;
-    while (std::getline(inputFile, line))
-    {
-        this->size += 1;
-    }
-    this->size = sqrt(this->size);
-    inputFile.close();
+    std::string::size_type pos = filename.find_last_of('/');
+    if (pos == std::string::npos)
+        pos = 0;
+    else
+        pos++;
+    this->size = filename[pos + 1] - '0';
 
-    inputFile.open(filename);
     this->tiles = std::vector<Tile>(this->size * this->size);
     int tileCount = 0;
+    std::string line;
     while (std::getline(inputFile, line))
     {
         if (line.empty())

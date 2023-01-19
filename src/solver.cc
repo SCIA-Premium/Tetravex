@@ -3,6 +3,7 @@
 int calculateCost(std::vector<Tile> tiles, int size)
 {
     int cost = 0;
+
     for (int i = 0; i < size; i++)
     {
         for (int j = 0; j < size; j++)
@@ -11,14 +12,20 @@ int calculateCost(std::vector<Tile> tiles, int size)
                 cost++;
             if (j != 0 && tiles[i * size + j].west != tiles[i * size + j - 1].east)
                 cost++;
+            if (i != size - 1 && tiles[i * size + j].south != tiles[(i + 1) * size + j].north)
+                cost++;
+            if (j != size - 1 && tiles[i * size + j].east != tiles[i * size + j + 1].west)
+                cost++;
         }
     }
     return cost;
 }
 
 // fonction pour effectuer une transition aléatoire entre les configurations
-void randomTransition(std::vector<Tile> &tiles, int size)
+void transition(std::vector<Tile> &tiles, int size)
 {
+
+
     int i = rand() % (size * size);
     while (tiles[i].inPlace)
         i = rand() % (size * size);
@@ -28,28 +35,146 @@ void randomTransition(std::vector<Tile> &tiles, int size)
         j = rand() % (size * size);
 
     std::swap(tiles[i], tiles[j]);
+    // Compute the score of moving each tile
+    /*std::vector<int> scores;
+    for (int i = 0; i < size * size; i++) {
+        if (tiles[i].inPlace) {
+            scores.push_back(0);
+            continue;
+        }
+        int score = 0;
+        int x = i / size;
+        int y = i % size;
+        if (x > 0) {
+            if (tiles[i].north != tiles[(x - 1) * size + y].south) {
+                score++;
+            }
+        }
+        if (y > 0) {
+            if (tiles[i].west != tiles[x * size + y - 1].east) {
+                score++;
+            }
+        }
+        scores.push_back(score);
+    }
+
+    // Find the best tile to move
+    int best_score = 0;
+    int best_tile = 0;
+    for (int i = 0; i < size * size; i++) {
+        if (scores[i] > best_score) {
+            best_score = scores[i];
+            best_tile = i;
+        }
+    }
+
+    // Find the best place to move it
+    int best_place = 0;
+    int best_place_score = 0;
+    for (int i = 0; i < size * size; i++) {
+        if (tiles[i].inPlace) {
+            continue;
+        }
+        int score = 0;
+        int x = i / size;
+        int y = i % size;
+        if (x > 0) {
+            if (tiles[best_tile].north != tiles[(x - 1) * size + y].south) {
+                score++;
+            }
+        }
+        if (y > 0) {
+            if (tiles[best_tile].west != tiles[x * size + y - 1].east) {
+                score++;
+            }
+        }
+        if (score > best_place_score && i != best_tile) {
+            best_place_score = score;
+            best_place = i;
+        }
+    }
+
+    std::cout << "Moving tile " << best_tile << " to " << best_place << std::endl;
+    std::swap(tiles[best_tile], tiles[best_place]);*/
+}
+
+std::pair<double, double> init_T(Tetravex& t)
+{
+	double T1 = 0;
+	double T2 = 1000000;
+	double T = T2;
+
+	std::vector<Tile> pieces = t.getTiles();
+	int n = t.getSize() * t.getSize();
+
+	double eps_T = 1;
+
+	while ((T2 - T1) > eps_T)
+	{
+		T = T1 + (T2 - T1) / 2;
+
+		int uniform = 0;
+		int nb_samples = 100;
+	
+		// check if uniform distribution
+		// sample m times and check if transition proba is near 1
+		for (int i = 0; i < nb_samples; ++i)
+		{
+			double eps_prob = 0.01;
+			
+			int i1 = rand() % n;
+			int i2 = i1;
+			while (i2 == i1)
+				i2 = rand() % n;
+
+			double U1 = calculateCost(t.getTiles(), t.getSize());
+			std::iter_swap(pieces.begin() + i1, pieces.begin() + i2);
+			double U2 = calculateCost(t.getTiles(), t.getSize());
+			
+			if (exp(- (U2 - U1) / T) > 1 - eps_prob)
+				uniform += 1;
+		}
+
+		if (uniform >= 0.98 * nb_samples)
+			T2 = T;
+		else
+			T1 = T;
+	}
+
+	return std::pair<double, double>(T, T1);
 }
 
 // fonction pour résoudre le tetravex en utilisant l'algorithme de recuit de
 // Metropolis-Hastings
-void solveTetravex(Tetravex &tetravex)
+int solveTetravex(Tetravex &tetravex)
 {
     srand(time(NULL));
-
     // paramètres de l'algorithme de recuit
-    double T = 1000000; // température initiale
-    double Tmin = 1e-6; // température minimale
+    double T = 250; // température initiale
+    double Tmin = 0.8; // température minimale
     double alpha = 0.99; // taux de refroidissement
+    
+    double T_max = 0;
+
+    std::pair<double, double> T_init = init_T(tetravex);
+    T = T_init.first;
+    //Tmin = T_init.second;
+
+    //T = T_max > 0 ? T_max : init_T(tetravex);
 
     int size = tetravex.getSize();
     int cost = calculateCost(tetravex.getTiles(), size);
+
+    //std::random_device rd;
+    //auto generator = std::mt19937(rd());
+    //auto distribution = std::uniform_real_distribution<double>(0.0, 1.0);
     while (cost)
     {
         std::vector<Tile> proposed = std::vector<Tile>(tetravex.getTiles());
-        randomTransition(proposed, size);
+        transition(proposed, size);
         int newCost = calculateCost(proposed, size);
         int delta = newCost - cost;
-        if (delta < 0)
+        if (delta <= 0)
         {
             cost = newCost;
             tetravex.setTiles(proposed);
@@ -65,52 +190,12 @@ void solveTetravex(Tetravex &tetravex)
         }
         if (cost == 0)
             break;
-        T *= alpha;
+        
+        if (T > Tmin)
+			T *= alpha;
+		else
+			T = Tmin;
     }
-    /*for (int i = 0; i < NUM_ITERATIONS; i++)
-    {
-        // effectuer une transition aléatoire
-        Tile proposed[size * size];
-        for (int j = 0; j < size * size; j++)
-        {
-            proposed[j] = tiles[j];
-        }
-        randomTransition(proposed, size);
-        // calculer la différence d'énergie entre la configuration actuelle et
-        // la configuration proposée
-        double deltaE = energyDifference(tiles, proposed, size);
 
-        // décider si la transition doit être acceptée ou rejetée
-        if (deltaE < 0)
-        {
-            // acceptation de la transition car l'énergie est plus basse
-            for (int j = 0; j < size * size; j++)
-            {
-                tiles[j] = proposed[j];
-            }
-        }
-        else
-        {
-            // rejet de la transition car l'énergie est plus élevée
-            // calculer la probabilité de transition
-            double p = exp(-deltaE);
-            // générer un nombre aléatoire entre 0 et 1
-            double r = (double)rand() / (double)RAND_MAX;
-
-
-            // acceptation de la transition avec une probabilité p
-            if (r < p)
-            {
-                for (int j = 0; j < size * size; j++)
-                {
-                    tiles[j] = proposed[j];
-                }
-            }
-        }
-
-        if (checkSolution(tiles, size))
-            break;
-
-    }*/
+    return 1;
 }
-
