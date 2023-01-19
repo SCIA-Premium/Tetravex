@@ -27,10 +27,13 @@ public:
     void writeToFile(std::string filename) const;
 
     std::vector<Tile> getTiles() const { return tiles; }
+    void setTiles(std::vector<Tile> tiles) { this->tiles = tiles; }
     int getSize() const { return size; }
     
     Tile getTile(int i) const { return tiles[i]; }
     Tile operator[](int i) const { return tiles[i]; }
+
+    bool isSolved() const;
 
 private:
     std::vector<Tile> tiles;

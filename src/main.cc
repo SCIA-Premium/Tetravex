@@ -1,4 +1,4 @@
-//#include "solver.hh"
+#include "solver.hh"
 #include "tetravex.hh"
 
 int main(int argc, char *argv[])
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
     std::cout << tetravex << std::endl;
 #endif
-    //solveTetravex(tetravex);
+    solveTetravex(tetravex);
     tetravex.writeToFile(argv[2]);
 #ifndef NDEBUG
     std::cout << std::endl << tetravex << std::endl;

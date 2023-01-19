@@ -1,130 +1,66 @@
 #include "solver.hh"
 
-// fonction pour calculer la différence d'énergie entre la configuration
-// actuelle et la configuration proposée
-double energyDifference(Tile current[], Tile proposed[], int size)
+int calculateCost(std::vector<Tile> tiles, int size)
 {
-    // calculer la différence d'énergie en comparant les bords des tuiles
-    double difference = 0;
+    int cost = 0;
     for (int i = 0; i < size; i++)
     {
         for (int j = 0; j < size; j++)
         {
-            if (i > 0)
-            {
-                difference += abs(current[i * size + j].north
-                                  - current[(i - 1) * size + j].south);
-                difference -= abs(proposed[i * size + j].north
-                                  - proposed[(i - 1) * size + j].south);
-            }
-            if (j > 0)
-            {
-                difference += abs(current[i * size + j].west
-                                  - current[i * size + j - 1].east);
-                difference -= abs(proposed[i * size + j].west
-                                  - proposed[i * size + j - 1].east);
-            }
+            if (i != 0 && tiles[i * size + j].north != tiles[(i - 1) * size + j].south)
+                cost++;
+            if (j != 0 && tiles[i * size + j].west != tiles[i * size + j - 1].east)
+                cost++;
         }
     }
-    return difference;
+    return cost;
 }
 
 // fonction pour effectuer une transition aléatoire entre les configurations
-void randomTransition(std::vector<Tile> tiles, int size)
+void randomTransition(std::vector<Tile> &tiles, int size)
 {
-    // Choisir deux axes aléatoires
-    int axis1 = rand() % size;
-    int axis2 = rand() % size;
-    while (axis2 == axis1)
-        axis2 = rand() % size;
-}
+    int i = rand() % (size * size);
+    while (tiles[i].inPlace)
+        i = rand() % (size * size);
+    
+    int j = rand() % (size * size);
+    while (tiles[j].inPlace && i == j)
+        j = rand() % (size * size);
 
-bool checkSolution(Tile tiles[], int size)
-{
-    for (int i = 0; i < size; i++)
-    {
-        for (int j = 0; j < size; j++)
-        {
-            if (i > 0)
-            {
-                // vérifier les bords nord-sud des tuiles
-                if (tiles[i * size + j].north
-                    != tiles[(i - 1) * size + j].south)
-                {
-                    return false;
-                }
-            }
-            if (j > 0)
-            {
-                // vérifier les bords est-ouest des tuiles
-                if (tiles[i * size + j].west != tiles[i * size + j - 1].east)
-                {
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
-}
-
-// calcule le coût actuel de la grille en comptant le nombre de cases mal
-// placées
-int calculateCost(std::vector<Tile> tiles, int size)
-{
-    int c = 0;
-    for (int i = 0; i < size; i++)
-    {
-        for (int j = 0; j < size; j++)
-        {
-            if (i > 0)
-                if (tiles[i * size + j].north
-                    != tiles[(i - 1) * size + j].south)
-                    c++;
-            if (j > 0)
-                if (tiles[i * size + j].west != tiles[i * size + j - 1].east)
-                    c++;
-        }
-    }
-    return c;
+    std::swap(tiles[i], tiles[j]);
 }
 
 // fonction pour résoudre le tetravex en utilisant l'algorithme de recuit de
 // Metropolis-Hastings
-void solveTetravex(std::vector<Tile> tiles, int size)
+void solveTetravex(Tetravex &tetravex)
 {
     srand(time(NULL));
 
     // paramètres de l'algorithme de recuit
-    double T = 100000; // température initiale
+    double T = 1000000; // température initiale
     double Tmin = 1e-6; // température minimale
     double alpha = 0.99; // taux de refroidissement
 
-    int cost = calculateCost(tiles, size);
-
+    int size = tetravex.getSize();
+    int cost = calculateCost(tetravex.getTiles(), size);
     while (cost)
     {
-        std::vector<Tile> proposed = std::vector<Tile>(size * size);
-        for (int j = 0; j < size * size; j++)
-        {
-            proposed[j] = tiles[j];
-        }
+        std::vector<Tile> proposed = std::vector<Tile>(tetravex.getTiles());
         randomTransition(proposed, size);
         int newCost = calculateCost(proposed, size);
         int delta = newCost - cost;
         if (delta < 0)
         {
             cost = newCost;
-            for (int j = 0; j < size * size; j++)
-            {
-                tiles[j] = proposed[j];
-            }
+            tetravex.setTiles(proposed);
         }
-        else if (rand() < exp(-delta / T))
-        {
-            cost = newCost;
-            for (int j = 0; j < size * size; j++)
+        else {
+            double p = exp(-delta / T);
+            double r = (double)rand() / RAND_MAX;
+            if (r < p)
             {
-                tiles[j] = proposed[j];
+                cost = newCost;
+                tetravex.setTiles(proposed);
             }
         }
         if (cost == 0)

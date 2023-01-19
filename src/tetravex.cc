@@ -109,3 +109,30 @@ std::ostream &operator<<(std::ostream &os, const Tetravex &tetravex)
     os << "+" << std::endl;
     return os;
 }
+
+bool Tetravex::isSolved() const
+{
+    int size = this->getSize();
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            if (i > 0)
+            {
+                if (this->tiles[i * size + j].north
+                    != this->tiles[(i - 1) * size + j].south)
+                {
+                    return false;
+                }
+            }
+            if (j > 0)
+            {
+                if (this->tiles[i * size + j].west != this->tiles[i * size + j - 1].east)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}

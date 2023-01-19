@@ -53,10 +53,10 @@ def test_solver_on_file(input_path, expected_output_path):
     else:
         print("\033[91m" + input_filename + " : KO" + "\033[0m")
         print("Expected output :")
-        #print_tetravex(expected_output)
+        print_tetravex(expected_output)
         print()
         print("Output :")
-        #print_tetravex(output)
+        print_tetravex(output)
     
 def test_solver_on_folder(input_folder, expected_output_folder):
     # List of input files sorted by name
