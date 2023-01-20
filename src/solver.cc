@@ -21,11 +21,8 @@ int calculateCost(std::vector<Tile> tiles, int size)
     return cost;
 }
 
-// fonction pour effectuer une transition aléatoire entre les configurations
 void transition(std::vector<Tile> &tiles, int size)
 {
-
-
     int i = rand() % (size * size);
     while (tiles[i].inPlace)
         i = rand() % (size * size);
@@ -35,77 +32,16 @@ void transition(std::vector<Tile> &tiles, int size)
         j = rand() % (size * size);
 
     std::swap(tiles[i], tiles[j]);
-    // Compute the score of moving each tile
-    /*std::vector<int> scores;
-    for (int i = 0; i < size * size; i++) {
-        if (tiles[i].inPlace) {
-            scores.push_back(0);
-            continue;
-        }
-        int score = 0;
-        int x = i / size;
-        int y = i % size;
-        if (x > 0) {
-            if (tiles[i].north != tiles[(x - 1) * size + y].south) {
-                score++;
-            }
-        }
-        if (y > 0) {
-            if (tiles[i].west != tiles[x * size + y - 1].east) {
-                score++;
-            }
-        }
-        scores.push_back(score);
-    }
-
-    // Find the best tile to move
-    int best_score = 0;
-    int best_tile = 0;
-    for (int i = 0; i < size * size; i++) {
-        if (scores[i] > best_score) {
-            best_score = scores[i];
-            best_tile = i;
-        }
-    }
-
-    // Find the best place to move it
-    int best_place = 0;
-    int best_place_score = 0;
-    for (int i = 0; i < size * size; i++) {
-        if (tiles[i].inPlace) {
-            continue;
-        }
-        int score = 0;
-        int x = i / size;
-        int y = i % size;
-        if (x > 0) {
-            if (tiles[best_tile].north != tiles[(x - 1) * size + y].south) {
-                score++;
-            }
-        }
-        if (y > 0) {
-            if (tiles[best_tile].west != tiles[x * size + y - 1].east) {
-                score++;
-            }
-        }
-        if (score > best_place_score && i != best_tile) {
-            best_place_score = score;
-            best_place = i;
-        }
-    }
-
-    std::cout << "Moving tile " << best_tile << " to " << best_place << std::endl;
-    std::swap(tiles[best_tile], tiles[best_place]);*/
 }
 
-std::pair<double, double> init_T(Tetravex& t)
+double init_T(Tetravex& t)
 {
 	double T1 = 0;
 	double T2 = 1000000;
 	double T = T2;
 
-	std::vector<Tile> pieces = t.getTiles();
-	int n = t.getSize() * t.getSize();
+	std::vector<Tile> tiles= t.getTiles();
+	int size = t.getSize();
 
 	double eps_T = 1;
 
@@ -116,22 +52,23 @@ std::pair<double, double> init_T(Tetravex& t)
 		int uniform = 0;
 		int nb_samples = 100;
 	
-		// check if uniform distribution
-		// sample m times and check if transition proba is near 1
 		for (int i = 0; i < nb_samples; ++i)
 		{
-			double eps_prob = 0.01;
+			double eps = 0.01;
 			
-			int i1 = rand() % n;
-			int i2 = i1;
-			while (i2 == i1)
-				i2 = rand() % n;
+            int x = rand() % (size * size);
+            while (tiles[x].inPlace)
+                x = rand() % (size * size);
 
-			double U1 = calculateCost(t.getTiles(), t.getSize());
-			std::iter_swap(pieces.begin() + i1, pieces.begin() + i2);
-			double U2 = calculateCost(t.getTiles(), t.getSize());
+            int x2 = rand() % (size * size);
+            while (tiles[x2].inPlace && x == x2)
+                x2 = rand() % (size * size);
+
+            double c1 = calculateCost(t.getTiles(), t.getSize());
+			std::swap(tiles[x], tiles[x2]);
+			double c2 = calculateCost(t.getTiles(), t.getSize());
 			
-			if (exp(- (U2 - U1) / T) > 1 - eps_prob)
+			if (exp(- (c2 - c1) / T) > 1 - eps)
 				uniform += 1;
 		}
 
@@ -140,34 +77,23 @@ std::pair<double, double> init_T(Tetravex& t)
 		else
 			T1 = T;
 	}
-
-	return std::pair<double, double>(T, T1);
+	return T;
 }
 
-// fonction pour résoudre le tetravex en utilisant l'algorithme de recuit de
-// Metropolis-Hastings
-int solveTetravex(Tetravex &tetravex)
+void solveTetravex(Tetravex &tetravex)
 {
-    srand(time(NULL));
     // paramètres de l'algorithme de recuit
-    double T = 250; // température initiale
+    //double T = 250; // température initiale
+    double T = init_T(tetravex);
     double Tmin = 0.8; // température minimale
-    double alpha = 0.99; // taux de refroidissement
+    double alpha = 0.999; // taux de refroidissement
     
-    double T_max = 0;
-
-    std::pair<double, double> T_init = init_T(tetravex);
-    T = T_init.first;
-    //Tmin = T_init.second;
-
-    //T = T_max > 0 ? T_max : init_T(tetravex);
-
     int size = tetravex.getSize();
     int cost = calculateCost(tetravex.getTiles(), size);
 
-    //std::random_device rd;
-    //auto generator = std::mt19937(rd());
-    //auto distribution = std::uniform_real_distribution<double>(0.0, 1.0);
+    std::random_device rd;
+    auto generator = std::mt19937(rd());
+    auto distribution = std::uniform_real_distribution<double>(0.0f, 1.0f);
     while (cost)
     {
         std::vector<Tile> proposed = std::vector<Tile>(tetravex.getTiles());
@@ -181,7 +107,7 @@ int solveTetravex(Tetravex &tetravex)
         }
         else {
             double p = exp(-delta / T);
-            double r = (double)rand() / RAND_MAX;
+            double r = distribution(generator);
             if (r < p)
             {
                 cost = newCost;
@@ -189,13 +115,11 @@ int solveTetravex(Tetravex &tetravex)
             }
         }
         if (cost == 0)
-            break;
+            return;
         
         if (T > Tmin)
 			T *= alpha;
 		else
 			T = Tmin;
     }
-
-    return 1;
 }

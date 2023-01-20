@@ -20,6 +20,5 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
     std::cout << std::endl << tetravex << std::endl;
 #endif
-    
     return 0;
 }

@@ -7,7 +7,6 @@
 #include <vector>
 #include <sstream>
 
-
 struct Tile
 {
     int north;

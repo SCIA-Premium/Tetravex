@@ -8,4 +8,4 @@
 
 #include "tetravex.hh"
 
-int solveTetravex(Tetravex &tetravex);
+void solveTetravex(Tetravex &tetravex);
